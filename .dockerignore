@@ -1,0 +1,12 @@
+results/
+tests/
+gui/
+.vscode/
+logs
+*.md
+train.py
+train_cnn.py
+mobilenetV2_details.py
+__pycache__/
+*.pyc
+saved_faces/

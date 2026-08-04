@@ -1,0 +1,9 @@
+# Requirements tối giản để deploy backend real-time (không cần matplotlib/seaborn/sklearn
+# dùng cho training, không cần opencv có GUI vì server không mở cửa sổ cv2.imshow).
+tensorflow>=2.12.0
+opencv-python-headless
+numpy
+fastapi
+uvicorn[standard]
+python-multipart
+websockets

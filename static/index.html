@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>Nhận diện cảm xúc thời gian thực</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #111; color: #eee; text-align: center; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 600; }
+  #wrap { position: relative; display: inline-block; }
+  video, canvas { border-radius: 8px; }
+  #overlay { position: absolute; top: 0; left: 0; }
+  #status { margin-top: 10px; font-size: 14px; color: #9ad; }
+  #status.err { color: #f77; }
+  button { margin: 8px; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>Demo: Nhận diện cảm xúc khuôn mặt thời gian thực (WebSocket)</h1>
+
+  <div id="wrap">
+    <video id="video" width="640" height="480" autoplay muted playsinline></video>
+    <canvas id="overlay" width="640" height="480"></canvas>
+  </div>
+
+  <div>
+    <button id="startBtn">Bắt đầu</button>
+    <button id="stopBtn" disabled>Dừng</button>
+  </div>
+  <div id="status">Chưa kết nối</div>
+
+  <script>
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const ctx = overlay.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    // Canvas ẩn dùng để encode frame video -> JPEG base64 trước khi gửi qua WebSocket
+    const sendCanvas = document.createElement('canvas');
+    sendCanvas.width = 320;   // giảm kích thước gửi đi để tăng tốc độ + giảm băng thông
+    sendCanvas.height = 240;
+    const sendCtx = sendCanvas.getContext('2d');
+
+    let ws = null;
+    let stream = null;
+    let sending = false;      // true khi đang chờ server trả kết quả của frame trước
+    let loopHandle = null;
+
+    function setStatus(text, isErr) {
+      statusEl.textContent = text;
+      statusEl.className = isErr ? 'err' : '';
+    }
+
+    function drawResults(data) {
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      if (data.error) return;
+
+      const scaleX = overlay.width / sendCanvas.width;
+      const scaleY = overlay.height / sendCanvas.height;
+
+      (data.faces || []).forEach(f => {
+        const [x, y, w, h] = f.box;
+        const bx = x * scaleX, by = y * scaleY, bw = w * scaleX, bh = h * scaleY;
+
+        ctx.strokeStyle = '#00e676';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx, by, bw, bh);
+
+        const label = `${f.emotion} ${(f.confidence * 100).toFixed(0)}%`;
+        ctx.font = '16px sans-serif';
+        const textW = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(bx, by - 22, textW + 8, 22);
+        ctx.fillStyle = '#00e676';
+        ctx.fillText(label, bx + 4, by - 6);
+      });
+
+      setStatus(`Khuôn mặt: ${data.count} | Suy luận: ${data.inference_ms} ms`, false);
+    }
+
+    function sendFrame() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || sending) return;
+      sendCtx.drawImage(video, 0, 0, sendCanvas.width, sendCanvas.height);
+      const dataUrl = sendCanvas.toDataURL('image/jpeg', 0.7);
+      sending = true;
+      ws.send(dataUrl);
+    }
+
+    async function start() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      } catch (err) {
+        setStatus('Không truy cập được webcam: ' + err.message, true);
+        return;
+      }
+      video.srcObject = stream;
+
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}/ws/emotion`);
+
+      ws.onopen = () => {
+        setStatus('Đã kết nối, đang xử lý...', false);
+        // Vòng lặp gửi frame: chỉ gửi frame mới khi đã nhận kết quả frame trước,
+        // để tránh dồn ứ khi model chậm hơn tốc độ webcam.
+        loopHandle = setInterval(sendFrame, 100); // ~10 FPS gửi lên server
+      };
+      ws.onmessage = (event) => {
+        sending = false;
+        try {
+          drawResults(JSON.parse(event.data));
+        } catch (e) {
+          console.error('Không parse được kết quả', e);
+        }
+      };
+      ws.onerror = () => setStatus('Lỗi kết nối WebSocket', true);
+      ws.onclose = () => setStatus('Đã ngắt kết nối', true);
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    }
+
+    function stop() {
+      if (loopHandle) clearInterval(loopHandle);
+      if (ws) ws.close();
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      setStatus('Đã dừng', false);
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+
+    startBtn.addEventListener('click', start);
+    stopBtn.addEventListener('click', stop);
+  </script>
+</body>
+</html>
