@@ -26,6 +26,7 @@ import os
 import cv2
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -38,6 +39,14 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(ROOT, "static")
 
 app = FastAPI(title="Realtime Emotion Recognition Backend", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["https://k.mio.io.vn"],
+    allow_headers=["*"],
+)
 
 # Chỉ cần dùng để phục vụ demo HTML client, không bắt buộc khi tự viết client riêng
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
