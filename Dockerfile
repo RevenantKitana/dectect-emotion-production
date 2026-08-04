@@ -18,6 +18,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 EXPOSE 8000
 
+# Render cung cấp biến PORT động; bind đúng cổng này để service được phát hiện.
 # 1 worker: TensorFlow model được load 1 lần / process, tránh nhân bản bộ nhớ nhiều lần.
 # Muốn scale ngang -> chạy nhiều container phía sau load balancer / reverse proxy.
-CMD ["uvicorn", "backend_app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["sh", "-c", "uvicorn backend_app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

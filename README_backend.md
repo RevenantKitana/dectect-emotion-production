@@ -161,8 +161,10 @@ pip install -r requirements-backend.txt
 - Start Command:
 
 ```bash
-uvicorn backend_app:app --host 0.0.0.0 --port $PORT
+uvicorn backend_app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
 ```
+
+> Render tự cấp biến môi trường PORT; nếu không dùng Render thì Docker local vẫn mặc định dùng 8000.
 
 ### 2. Biến môi trường
 Đặt ít nhất:
