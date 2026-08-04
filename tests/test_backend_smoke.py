@@ -2,6 +2,7 @@ import importlib.util
 import os
 import sys
 
+import cv2
 from fastapi.testclient import TestClient
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,6 +20,10 @@ def test_imports():
 def test_model_exists():
     model_path = os.path.join(ROOT, 'models', 'best_model.keras')
     assert os.path.exists(model_path), 'model missing'
+
+
+def test_opencv_has_haar_cascade():
+    assert hasattr(cv2, 'CascadeClassifier'), 'opencv headless missing CascadeClassifier'
 
 
 def test_realtime_only_backend_routes():
