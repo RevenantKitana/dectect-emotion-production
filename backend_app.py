@@ -148,7 +148,7 @@ app.add_middleware(
         "216.144.248.29",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["https://k.mio.io.vn"],
     allow_headers=["*"],
 )
 
