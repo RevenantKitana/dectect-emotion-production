@@ -43,8 +43,15 @@ app = FastAPI(title="Realtime Emotion Recognition Backend", version="1.0.0")
 
 health_app = FastAPI()
 
-health_app.get("/")
+@health_app.get("/")
 def health():
+    return {
+        "status": "ok" if emotion_service.is_ready else "model_not_loaded",
+        "model_path": emotion_service.model_path,
+    }
+
+@health_app.head("/")
+def health_head():
     return {
         "status": "ok" if emotion_service.is_ready else "model_not_loaded",
         "model_path": emotion_service.model_path,
@@ -52,9 +59,9 @@ def health():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[],
+    allow_origins=["https://k.mio.io.vn"],
     allow_credentials=True,
-    allow_methods=["https://k.mio.io.vn"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -78,14 +85,6 @@ def warmup_model():
 @app.get("/")
 def index():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-
-
-@app.get("/health")
-def health():
-    return {
-        "status": "ok" if emotion_service.is_ready else "model_not_loaded",
-        "model_path": emotion_service.model_path,
-    }
 
 
 def _decode_base64_frame(data_url: str) -> np.ndarray:
